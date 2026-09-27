@@ -1,5 +1,17 @@
 [
   {
+    "id": 2,
+    "title": "Forgotten Island",
+    "director": "Joel Crawford & Januel P. Mercado",
+    "year": 2026,
+    "watchedOn": "",
+    "plannedMonth": "09/2026",
+    "rating": 0,
+    "status": "planned",
+    "note": "",
+    "poster": "https://en.wikipedia.org/wiki/File:Forgotten_Island_poster.jpeg"
+  },
+  {
     "id": 1,
     "title": "Resident Evil",
     "director": "Zach Cregger",
