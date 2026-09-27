@@ -11,9 +11,11 @@ const { server } = await import('../server/index.mjs')
 const originalFetch = globalThis.fetch
 let storedFilms = []
 let sha = 'sha-1'
+let missingGitHubFile = false
 
 globalThis.fetch = async (url, options = {}) => {
   assert.match(String(url), /^https:\/\/api\.github\.com\/repos\/example\/films\/contents\/public\/films\.json/)
+  if (missingGitHubFile) return Response.json({ message: 'Not Found' }, { status: 404 })
   if (options.method === 'PUT') {
     const body = JSON.parse(options.body)
     assert.equal(body.sha, sha)
@@ -83,4 +85,17 @@ test('visitors can read but cannot write; owner can save with current SHA', asyn
 test('API rejects requests from another browser origin', async () => {
   const response = await api('/api/films', { headers: { Origin: 'https://other.example' } })
   assert.equal(response.status, 403)
+})
+
+test('a missing GitHub file is reported as an error, not an empty collection', async () => {
+  missingGitHubFile = true
+  const originalError = console.error
+  console.error = () => {}
+  try {
+    const response = await api('/api/films')
+    assert.equal(response.status, 502)
+  } finally {
+    console.error = originalError
+    missingGitHubFile = false
+  }
 })

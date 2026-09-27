@@ -82,7 +82,6 @@ async function githubRequest(method, body) {
 
 async function readFilms() {
   const response = await githubRequest('GET')
-  if (response.status === 404) return { films: [], sha: null }
   if (!response.ok) throw new Error(`GitHub read failed: ${response.status}`)
   const file = await response.json()
   if (file.type !== 'file' || file.encoding !== 'base64' || typeof file.content !== 'string') {

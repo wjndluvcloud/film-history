@@ -89,6 +89,45 @@ command -v node
 
 Kết quả `stat` cần là `root:root 600`; `command -v node` nên là `/usr/bin/node` để khớp file service ở bước 3. Nếu website có domain riêng, đặt `WEB_ORIGIN` bằng origin của domain đó. Bước 2 chỉ chuẩn bị API; bước 3 mới chạy service.
 
+### Chi tiết bước 3: chạy API bằng systemd
+
+Trên Droplet, xác nhận các file của bước 2 đã có. Không in nội dung `/etc/scenes/api.env` ra terminal vì file này chứa token:
+
+```sh
+ls -l /opt/scenes/server/index.mjs
+id scenes
+command -v node
+sudo stat -c '%U:%G %a %n' /etc/scenes/api.env
+```
+
+Cài service từ file mẫu:
+
+```sh
+sudo cp /opt/scenes/deploy/film-api.service.example /etc/systemd/system/film-api.service
+```
+
+Nếu `command -v node` không trả về `/usr/bin/node`, dùng `sudo nano /etc/systemd/system/film-api.service` để sửa đường dẫn đầu tiên trong `ExecStart` cho đúng. Sau đó bật và khởi chạy service:
+
+```sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now film-api
+sudo systemctl status film-api --no-pager
+```
+
+Trạng thái cần là `active (running)`. Service chạy dưới user `scenes`, đọc biến cấu hình từ `/etc/scenes/api.env`, và chỉ nghe trên `127.0.0.1:3001`. Kiểm tra API ngay trên Droplet bằng yêu cầu GET:
+
+```sh
+curl -i http://127.0.0.1:3001/api/films
+```
+
+Kết quả đúng là HTTP `200` với JSON chứa `films` và `sha` (khi chưa có phim, `films` là `[]`). Nếu service không chạy hoặc API trả lỗi, xem log:
+
+```sh
+sudo journalctl -u film-api -n 50 --no-pager
+```
+
+Nếu log báo thiếu biến cấu hình, kiểm tra `/etc/scenes/api.env`; nếu báo `GitHub read failed`, kiểm tra `GITHUB_OWNER`, `GITHUB_REPO`, `GITHUB_BRANCH`, `GITHUB_FILE_PATH` và quyền token. Sau khi sửa file env, chạy `sudo systemctl restart film-api`. Chỉ sau khi bước này trả HTTP `200` mới tiếp tục cấu hình Nginx ở bước 4.
+
 Lệnh cài Nginx và Certbot trên Ubuntu/Debian (chạy các lệnh sao chép và tạo liên kết một lần khi cấu hình mới):
 
 ```sh
