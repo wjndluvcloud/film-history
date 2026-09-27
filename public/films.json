@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "id": 1,
+    "title": "Resident Evil",
+    "director": "Zach Cregger",
+    "year": 2026,
+    "watchedOn": "26/09/2026",
+    "plannedMonth": "",
+    "rating": 4,
+    "status": "watched",
+    "note": "Mặc dù không thích phim kinh dị nhưng mà phải công nhận là phim hay",
+    "poster": "https://www.imdb.com/title/tt35538033/mediaviewer/rm3844459266/?ref_=ext_shr_lnk"
+  }
+]
