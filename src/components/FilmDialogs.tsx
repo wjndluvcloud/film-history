@@ -65,7 +65,7 @@ function DialogShell({ titleId, onClose, children }: DialogShellProps) {
   )
 }
 
-const ratingOptions = [0, 3, 3.5, 4, 4.5, 5]
+const ratingOptions = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5]
 
 function RatingField({ initialRating, fullWidth = false }: { initialRating: number; fullWidth?: boolean }) {
   return (
@@ -140,6 +140,9 @@ export function WatchedEntryDialog({ film, currentDate, onSubmit, onClose }: Wat
       <form onSubmit={onSubmit}>
         <div className="full-field"><FilmDateField initialValue={film.watchedOn || currentDate} kind="day" /></div>
         <RatingField fullWidth initialRating={isEditing ? film.rating : 3} />
+        <label className="form-field full-field">Link poster<input defaultValue={film.poster} name="poster" placeholder="https://..." type="url" /></label>
+        <label className="form-field full-field">Link poster<input defaultValue={film.poster} name="poster" placeholder="https://..." type="url" /></label>
+        <label className="form-field full-field">Link poster<input defaultValue={film.poster} name="poster" placeholder="https://..." type="url" /></label>
         <label className="form-field full-field">Ghi chú<textarea defaultValue={film.note} name="note" placeholder="Bạn cảm thấy thế nào về bộ phim?" rows={4} /></label>
         <div className="modal-actions">
           <button className="cancel-button" onClick={onClose} type="button">Hủy</button>

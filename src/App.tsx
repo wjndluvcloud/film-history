@@ -188,6 +188,7 @@ function App() {
               status: 'watched',
               watchedOn,
               rating: Number(formData.get('rating')),
+              poster: String(formData.get('poster')).trim(),
               note: String(formData.get('note')).trim(),
             }
           : film,
