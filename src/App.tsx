@@ -7,7 +7,6 @@ import {
   Film,
   LayoutDashboard,
   Plus,
-  Search,
   Star,
   LogIn,
   LogOut,
@@ -58,10 +57,10 @@ function App() {
   const [hasLoaded, setHasLoaded] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const [loginError, setLoginError] = useState('')
   const [error, setError] = useState('')
   const [legacyFilms, setLegacyFilms] = useState<FilmEntry[]>(loadFilms)
   const [activeView, setActiveView] = useState<View>('overview')
-  const [search, setSearch] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newFilmStatus, setNewFilmStatus] = useState<FilmStatus>('watched')
   const [filmToUpdateWatched, setFilmToUpdateWatched] = useState<FilmEntry | null>(null)
@@ -111,14 +110,14 @@ function App() {
     event.preventDefault()
     const form = event.currentTarget
     const password = String(new FormData(form).get('password'))
-    setError('')
+    setLoginError('')
     try {
       await login(password)
       setIsOwner(true)
       setIsLoginOpen(false)
       form.reset()
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Không đăng nhập được.')
+      setLoginError(reason instanceof Error ? reason.message : 'Không đăng nhập được.')
     }
   }
 
@@ -130,6 +129,11 @@ function App() {
     setFilmToReturnToWatchlist(null)
   }
 
+  function toggleLogin() {
+    setLoginError('')
+    setIsLoginOpen((open) => !open)
+  }
+
   async function importLocalFilms() {
     if (films.length || !legacyFilms.length) return
     const saved = await commitFilms(() => legacyFilms)
@@ -138,19 +142,6 @@ function App() {
       setLegacyFilms([])
     }
   }
-
-  useEffect(() => {
-    function focusSearch(event: KeyboardEvent) {
-      if (document.querySelector('[role="dialog"]')) return
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault()
-        document.querySelector<HTMLInputElement>('.search-box input')?.focus()
-      }
-    }
-
-    window.addEventListener('keydown', focusSearch)
-    return () => window.removeEventListener('keydown', focusSearch)
-  }, [])
 
   const today = new Date()
   const currentDate = formatLocalDate(today)
@@ -168,10 +159,6 @@ function App() {
     : '—'
   const latestFilm = watched[0]
   const collection = activeView === 'planned' ? planned : activeView === 'missed' ? missed : watched
-  const normalizedSearch = search.trim().toLocaleLowerCase('vi-VN')
-  const visibleFilms = collection.filter((film) =>
-    `${film.title} ${film.director} ${film.year}`.toLocaleLowerCase('vi-VN').includes(normalizedSearch),
-  )
   async function saveWatchedEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!filmToUpdateWatched) return
@@ -300,6 +287,16 @@ function App() {
             </button>
           ))}
         </nav>
+        <button
+          aria-expanded={!isOwner ? isLoginOpen : undefined}
+          aria-label={isOwner ? 'Đăng xuất' : 'Đăng nhập'}
+          className="profile-menu mobile-owner-control"
+          onClick={isOwner ? handleLogout : toggleLogin}
+          title={isOwner ? 'Đăng xuất' : 'Đăng nhập'}
+          type="button"
+        >
+          {isOwner ? <LogOut size={18} /> : <LogIn size={18} />}
+        </button>
         <div className="sidebar-note">
           <span className="note-mark">“</span>
           <p>Một bộ phim hay là một nơi chốn ta có thể quay về.</p>
@@ -307,122 +304,113 @@ function App() {
         <div className="sidebar-footer">
           <span className="avatar">DV</span>
           <span className="profile-name">Duc Vu<small>Người thích xem phim</small></span>
-          <span className="profile-menu">···</span>
+          <button
+            aria-expanded={!isOwner ? isLoginOpen : undefined}
+            aria-label={isOwner ? 'Đăng xuất' : 'Đăng nhập'}
+            className="profile-menu"
+            onClick={isOwner ? handleLogout : toggleLogin}
+            title={isOwner ? 'Đăng xuất' : 'Đăng nhập'}
+            type="button"
+          >
+            {isOwner ? <LogOut size={18} /> : <LogIn size={18} />}
+          </button>
         </div>
+        {isLoginOpen && !isOwner && (
+          <form className="owner-login" onSubmit={handleLogin}>
+            <label>Mật khẩu quản trị <input autoComplete="current-password" name="password" required type="password" /></label>
+            {loginError && <p className="login-error" role="alert">{loginError}</p>}
+            <button className="primary-button" type="submit">Đăng nhập</button>
+          </form>
+        )}
       </aside>
 
       <main className="main-content" id="top">
-        <header className="topbar">
-          <div className="breadcrumb">THƯ VIỆN <span>/</span> {navigation.find((item) => item.id === activeView)?.label.toUpperCase()}</div>
-          <label className="search-box">
-            <Search size={16} />
-            <input
-              aria-label="Tìm phim"
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Tìm phim, đạo diễn..."
-              value={search}
-            />
-            <kbd>Ctrl K</kbd>
-          </label>
-          <div className="owner-controls">
-            {isOwner ? (
-              <button onClick={handleLogout} type="button"><LogOut size={14} /> Đăng xuất</button>
-            ) : (
-              <button onClick={() => setIsLoginOpen((open) => !open)} type="button"><LogIn size={14} /> Đăng nhập</button>
-            )}
-          </div>
-        </header>
-
         <div className="page-wrap">
-          {error && <div className="api-message" role="alert">{error}</div>}
-          {isLoading && <div className="api-message" role="status">Đang tải dữ liệu phim...</div>}
-          {isSaving && <div className="api-message" role="status">Đang lưu thay đổi...</div>}
-          {isOwner && hasLoaded && !films.length && legacyFilms.length > 0 && (
-            <div className="api-message">
-              Tìm thấy {legacyFilms.length} phim đã lưu trên trình duyệt này.{' '}
-              <button disabled={isSaving} onClick={importLocalFilms} type="button">Nhập vào dữ liệu chung</button>
-            </div>
-          )}
-          {isLoginOpen && !isOwner && (
-            <form className="owner-login" onSubmit={handleLogin}>
-              <label>Mật khẩu quản trị <input autoComplete="current-password" name="password" required type="password" /></label>
-              <button className="primary-button" type="submit">Đăng nhập</button>
-            </form>
-          )}
-          <section className="welcome-row">
-            <div>
-              <p className="eyebrow">{todayLabel}</p>
-              <h1>{activeView === 'overview' ? 'Một tháng đầy thước phim.' : navigation.find((item) => item.id === activeView)?.label}</h1>
-              <p className="welcome-copy">Chào bạn, đây là câu chuyện điện ảnh của mình.</p>
-            </div>
-            {isOwner && hasLoaded && <button className="primary-button" disabled={isSaving} onClick={() => openAddFilm()} type="button">
-              <Plus size={17} /> Ghi phim mới
-            </button>}
-          </section>
-
-          {activeView === 'overview' && latestFilm && (
-            <section className="featured-film" aria-label="Phim xem gần nhất">
-              <div className="featured-image">
-                <img alt={`Poster phim ${latestFilm.title}`} src={latestFilm.poster} onError={(event) => { event.currentTarget.style.display = 'none' }} />
-                <span className="image-index">01 <span>/ LATEST ENTRY</span></span>
-                <span className="poster-caption">A FILM BY {latestFilm.director.toUpperCase()}</span>
+          <div className="page-body">
+            {error && <div className="api-message" role="alert">{error}</div>}
+            {isLoading && <div className="api-message" role="status">Đang tải dữ liệu phim...</div>}
+            {isSaving && <div className="api-message" role="status">Đang lưu thay đổi...</div>}
+            {isOwner && hasLoaded && !films.length && legacyFilms.length > 0 && (
+              <div className="api-message">
+                Tìm thấy {legacyFilms.length} phim đã lưu trên trình duyệt này.{' '}
+                <button disabled={isSaving} onClick={importLocalFilms} type="button">Nhập vào dữ liệu chung</button>
               </div>
-              <div className="featured-copy">
-                <div className="feature-kicker"><span className="live-dot" /> PHIM VỪA XEM <span className="feature-date">{formatDate(latestFilm.watchedOn)}</span></div>
-                <h2>{latestFilm.title}<span className="title-year">({latestFilm.year})</span></h2>
-                <p className="feature-meta">{latestFilm.director}</p>
-                <div className="feature-rating"><Stars rating={latestFilm.rating} /></div>
-                <p className="feature-note">“{latestFilm.note || 'Một bộ phim đáng để ghi lại.'}”</p>
-                <button className="text-link" onClick={() => setActiveView('watched')} type="button">Mở nhật ký <ArrowUpRight size={16} /></button>
-              </div>
-            </section>
-          )}
-
-          {hasLoaded && activeView === 'overview' && (
-            <section className="stats-row" aria-label="Thống kê">
-              <article className="stat-card">
-                <div className="stat-top"><span>PHIM ĐÃ XEM</span><Clapperboard size={17} /></div>
-                <div className="stat-value">{watched.length}<small> phim</small></div>
-                <div className="stat-foot"><span className="stat-accent">+{watchedThisMonth.length}</span> trong tháng này</div>
-              </article>
-              <article className="stat-card">
-                <div className="stat-top"><span>ĐIỂM TRUNG BÌNH</span><Star size={17} /></div>
-                <div className="stat-value">{averageRating}<small> / 5</small></div>
-                <div className="stat-foot">Từ những bộ phim đã chấm</div>
-              </article>
-              <article className="stat-card">
-                <div className="stat-top"><span>MUỐN XEM</span><Bookmark size={17} /></div>
-                <div className="stat-value">{planned.length}<small> phim</small></div>
-                <div className="stat-foot">Trong danh sách dự định</div>
-              </article>
-            </section>
-          )}
-
-          {hasLoaded && <div className="content-grid">
-            <FilmSection
-              view={activeView}
-              films={visibleFilms}
-              canEdit={isOwner && !isSaving}
-              onShowWatched={() => setActiveView('watched')}
-              onAddFilm={() => openAddFilm()}
-              onMarkWatched={setFilmToUpdateWatched}
-              onEditWatched={setFilmToUpdateWatched}
-              onMarkMissed={markFilmMissed}
-              onReturnToWatchlist={returnFilmToWatchlist}
-            />
-
-            {activeView !== 'planned' && activeView !== 'missed' && (
-              <WatchlistPanel
-                films={planned}
-                canEdit={isOwner && !isSaving}
-                currentMonth={currentMonth}
-                watchedThisMonthCount={watchedThisMonth.length}
-                onMarkWatched={setFilmToUpdateWatched}
-                onMarkMissed={markFilmMissed}
-                onAddFilm={() => { setActiveView('planned'); openAddFilm('planned') }}
-              />
             )}
-          </div>}
+            <section className="welcome-row">
+              <div>
+                <p className="eyebrow">{todayLabel}</p>
+                <h1>{activeView === 'overview' ? 'Một tháng đầy thước phim.' : navigation.find((item) => item.id === activeView)?.label}</h1>
+                <p className="welcome-copy">Chào bạn, đây là câu chuyện điện ảnh của mình.</p>
+              </div>
+              {isOwner && hasLoaded && <button className="primary-button" disabled={isSaving} onClick={() => openAddFilm()} type="button">
+                <Plus size={17} /> Ghi phim mới
+              </button>}
+            </section>
+
+            {activeView === 'overview' && latestFilm && (
+              <section className="featured-film" aria-label="Phim xem gần nhất">
+                <div className="featured-image">
+                  <img alt={`Poster phim ${latestFilm.title}`} src={latestFilm.poster} onError={(event) => { event.currentTarget.style.display = 'none' }} />
+                  <span className="image-index">01 <span>/ LATEST ENTRY</span></span>
+                  <span className="poster-caption">A FILM BY {latestFilm.director.toUpperCase()}</span>
+                </div>
+                <div className="featured-copy">
+                  <div className="feature-kicker"><span className="live-dot" /> PHIM VỪA XEM <span className="feature-date">{formatDate(latestFilm.watchedOn)}</span></div>
+                  <h2>{latestFilm.title}<span className="title-year">({latestFilm.year})</span></h2>
+                  <p className="feature-meta">{latestFilm.director}</p>
+                  <div className="feature-rating"><Stars rating={latestFilm.rating} /></div>
+                  <p className="feature-note">“{latestFilm.note || 'Một bộ phim đáng để ghi lại.'}”</p>
+                  <button className="text-link" onClick={() => setActiveView('watched')} type="button">Mở nhật ký <ArrowUpRight size={16} /></button>
+                </div>
+              </section>
+            )}
+
+            {hasLoaded && activeView === 'overview' && (
+              <section className="stats-row" aria-label="Thống kê">
+                <article className="stat-card">
+                  <div className="stat-top"><span>PHIM ĐÃ XEM</span><Clapperboard size={17} /></div>
+                  <div className="stat-value">{watched.length}<small> phim</small></div>
+                  <div className="stat-foot"><span className="stat-accent">+{watchedThisMonth.length}</span> trong tháng này</div>
+                </article>
+                <article className="stat-card">
+                  <div className="stat-top"><span>ĐIỂM TRUNG BÌNH</span><Star size={17} /></div>
+                  <div className="stat-value">{averageRating}<small> / 5</small></div>
+                  <div className="stat-foot">Từ những bộ phim đã chấm</div>
+                </article>
+                <article className="stat-card">
+                  <div className="stat-top"><span>MUỐN XEM</span><Bookmark size={17} /></div>
+                  <div className="stat-value">{planned.length}<small> phim</small></div>
+                  <div className="stat-foot">Trong danh sách dự định</div>
+                </article>
+              </section>
+            )}
+
+            {hasLoaded && <div className="content-grid">
+              <FilmSection
+                view={activeView}
+                films={collection}
+                canEdit={isOwner && !isSaving}
+                onShowWatched={() => setActiveView('watched')}
+                onAddFilm={() => openAddFilm()}
+                onMarkWatched={setFilmToUpdateWatched}
+                onEditWatched={setFilmToUpdateWatched}
+                onMarkMissed={markFilmMissed}
+                onReturnToWatchlist={returnFilmToWatchlist}
+              />
+
+              {activeView !== 'planned' && activeView !== 'missed' && (
+                <WatchlistPanel
+                  films={planned}
+                  canEdit={isOwner && !isSaving}
+                  currentMonth={currentMonth}
+                  watchedThisMonthCount={watchedThisMonth.length}
+                  onMarkWatched={setFilmToUpdateWatched}
+                  onMarkMissed={markFilmMissed}
+                  onAddFilm={() => { setActiveView('planned'); openAddFilm('planned') }}
+                />
+              )}
+            </div>}
+          </div>
           <footer className="page-footer"><span>SCENES © {today.getFullYear()}</span><span>ĐƯỢC LƯU GIỮ, KHÔNG BỊ LÃNG QUÊN.</span></footer>
         </div>
       </main>
