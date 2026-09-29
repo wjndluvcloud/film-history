@@ -1,51 +1,23 @@
 import { ArrowUpRight, Bookmark, CalendarDays, Check, CircleOff, Film, Pencil } from 'lucide-react'
-import { formatDate, formatMonth, monthSortKey, type FilmEntry, type FilmStatus } from '../filmUtils'
+import { formatDate, formatMonth, groupFilmsByMonth, type FilmEntry, type FilmView } from '../filmUtils'
 import { Stars } from './Stars'
 
-type View = 'overview' | FilmStatus
-
 type FilmSectionProps = {
-  view: View
+  view: FilmView
   films: FilmEntry[]
   canEdit: boolean
   onShowWatched: () => void
   onAddFilm: () => void
-  onMarkWatched: (film: FilmEntry) => void
-  onEditWatched: (film: FilmEntry) => void
+  onUpdateWatched: (film: FilmEntry) => void
   onMarkMissed: (filmId: number) => void
   onReturnToWatchlist: (filmId: number) => void
 }
 
-type MonthGroup = { month: string; films: FilmEntry[] }
-
-function groupFilmsByMonth(films: FilmEntry[], view: FilmStatus): MonthGroup[] {
-  const monthFor = (film: FilmEntry) => view === 'watched'
-    ? film.watchedOn.slice(3)
-    : film.plannedMonth || ''
-
-  const groups = new Map<string, FilmEntry[]>()
-  for (const film of films) {
-    const month = monthFor(film)
-    const group = groups.get(month)
-    if (group) group.push(film)
-    else groups.set(month, [film])
-  }
-
-  return Array.from(groups, ([month, groupedFilms]) => ({ month, films: groupedFilms }))
-    .sort((first, second) => {
-      if (!first.month && !second.month) return 0
-      if (!first.month) return 1
-      if (!second.month) return -1
-      return monthSortKey(second.month).localeCompare(monthSortKey(first.month))
-    })
-}
-
-function FilmRow({ film, index, canEdit, onMarkWatched, onEditWatched, onMarkMissed, onReturnToWatchlist }: {
+function FilmRow({ film, index, canEdit, onUpdateWatched, onMarkMissed, onReturnToWatchlist }: {
   film: FilmEntry
   index: number
   canEdit: boolean
-  onMarkWatched: FilmSectionProps['onMarkWatched']
-  onEditWatched: FilmSectionProps['onEditWatched']
+  onUpdateWatched: FilmSectionProps['onUpdateWatched']
   onMarkMissed: FilmSectionProps['onMarkMissed']
   onReturnToWatchlist: FilmSectionProps['onReturnToWatchlist']
 }) {
@@ -63,11 +35,11 @@ function FilmRow({ film, index, canEdit, onMarkWatched, onEditWatched, onMarkMis
           {film.status === 'watched' ? (
             <div className="film-actions watched-actions">
               <Stars rating={film.rating} />
-              {canEdit && <button className="edit-watched" onClick={() => onEditWatched(film)} type="button"><Pencil size={13} /> Sửa</button>}
+              {canEdit && <button className="edit-watched" onClick={() => onUpdateWatched(film)} type="button"><Pencil size={13} /> Sửa</button>}
             </div>
           ) : (
             canEdit && <div className="film-actions">
-              <button className="mark-watched" onClick={() => onMarkWatched(film)} type="button"><Check size={13} /> Đã xem</button>
+              <button className="mark-watched" onClick={() => onUpdateWatched(film)} type="button"><Check size={13} /> Đã xem</button>
               {film.status === 'planned' ? (
                 <button className="mark-missed" onClick={() => onMarkMissed(film.id)} type="button"><CircleOff size={13} /> Bỏ lỡ</button>
               ) : (
@@ -82,7 +54,7 @@ function FilmRow({ film, index, canEdit, onMarkWatched, onEditWatched, onMarkMis
   )
 }
 
-export function FilmSection({ view, films, canEdit, onShowWatched, onAddFilm, onMarkWatched, onEditWatched, onMarkMissed, onReturnToWatchlist }: FilmSectionProps) {
+export function FilmSection({ view, films, canEdit, onShowWatched, onAddFilm, onUpdateWatched, onMarkMissed, onReturnToWatchlist }: FilmSectionProps) {
   const groups = view === 'overview' ? [] : groupFilmsByMonth(films, view)
 
   return (
@@ -97,11 +69,11 @@ export function FilmSection({ view, films, canEdit, onShowWatched, onAddFilm, on
       {films.length ? (
         <div className="film-list">
           {view === 'overview'
-            ? films.map((film, index) => <FilmRow key={film.id} film={film} index={index} canEdit={canEdit} onMarkWatched={onMarkWatched} onEditWatched={onEditWatched} onMarkMissed={onMarkMissed} onReturnToWatchlist={onReturnToWatchlist} />)
+            ? films.map((film, index) => <FilmRow key={film.id} film={film} index={index} canEdit={canEdit} onUpdateWatched={onUpdateWatched} onMarkMissed={onMarkMissed} onReturnToWatchlist={onReturnToWatchlist} />)
             : groups.map((group) => (
                 <section className="month-group" key={group.month || 'unscheduled'}>
                   <div className="month-heading"><h3>{formatMonth(group.month)}</h3><span>{group.films.length} PHIM</span></div>
-                  {group.films.map((film, index) => <FilmRow key={film.id} film={film} index={index} canEdit={canEdit} onMarkWatched={onMarkWatched} onEditWatched={onEditWatched} onMarkMissed={onMarkMissed} onReturnToWatchlist={onReturnToWatchlist} />)}
+                  {group.films.map((film, index) => <FilmRow key={film.id} film={film} index={index} canEdit={canEdit} onUpdateWatched={onUpdateWatched} onMarkMissed={onMarkMissed} onReturnToWatchlist={onReturnToWatchlist} />)}
                 </section>
               ))}
         </div>

@@ -6,12 +6,12 @@ type WatchlistPanelProps = {
   canEdit: boolean
   currentMonth: string
   watchedThisMonthCount: number
-  onMarkWatched: (film: FilmEntry) => void
+  onUpdateWatched: (film: FilmEntry) => void
   onMarkMissed: (filmId: number) => void
   onAddFilm: () => void
 }
 
-export function WatchlistPanel({ films, canEdit, currentMonth, watchedThisMonthCount, onMarkWatched, onMarkMissed, onAddFilm }: WatchlistPanelProps) {
+export function WatchlistPanel({ films, canEdit, currentMonth, watchedThisMonthCount, onUpdateWatched, onMarkMissed, onAddFilm }: WatchlistPanelProps) {
   return (
     <aside className="watchlist-panel">
       <div className="watchlist-heading"><div><h2>Chờ được xem</h2></div><span className="watchlist-count">{films.length.toString().padStart(2, '0')}</span></div>
@@ -19,7 +19,7 @@ export function WatchlistPanel({ films, canEdit, currentMonth, watchedThisMonthC
         {films.slice(0, 3).map((film) => (
           <article className="watchlist-item" key={film.id}>
             <div className="watchlist-poster"><img alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} src={film.poster} /><span>{film.title.slice(0, 1)}</span></div>
-            <div className="watchlist-info"><h3>{film.title}</h3><p>{film.year}</p>{canEdit && <div className="watchlist-actions"><button onClick={() => onMarkWatched(film)} type="button"><Check size={13} /> Đã xem</button><button className="missed-action" onClick={() => onMarkMissed(film.id)} type="button"><CircleOff size={13} /> Bỏ lỡ</button></div>}</div>
+            <div className="watchlist-info"><h3>{film.title}</h3><p>{film.year}</p>{canEdit && <div className="watchlist-actions"><button onClick={() => onUpdateWatched(film)} type="button"><Check size={13} /> Đã xem</button><button className="missed-action" onClick={() => onMarkMissed(film.id)} type="button"><CircleOff size={13} /> Bỏ lỡ</button></div>}</div>
           </article>
         ))}
         {!films.length && <p className="watchlist-empty">Danh sách đang trống. Thêm một phim bạn muốn xem nhé.</p>}

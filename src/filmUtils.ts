@@ -1,4 +1,5 @@
 export type FilmStatus = 'watched' | 'planned' | 'missed'
+export type FilmView = 'overview' | FilmStatus
 
 export type FilmEntry = {
   id: number
@@ -51,7 +52,9 @@ function isFilmEntry(value: unknown): value is FilmEntry {
 
   const film = value as Record<string, unknown>
   return Number.isSafeInteger(film.id)
+    && (film.id as number) > 0
     && typeof film.title === 'string'
+    && film.title.trim().length > 0
     && typeof film.director === 'string'
     && Number.isInteger(film.year)
     && (film.year as number) >= 1888
@@ -93,15 +96,6 @@ export function loadFilms(storage?: Pick<Storage, 'getItem'>): FilmEntry[] {
   }
 }
 
-export function saveFilms(films: FilmEntry[], storage?: Pick<Storage, 'setItem'>): boolean {
-  try {
-    (storage ?? localStorage).setItem(FILMS_STORAGE_KEY, JSON.stringify(films))
-    return true
-  } catch {
-    return false
-  }
-}
-
 export function formatLocalDate(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -137,4 +131,28 @@ export function monthSortKey(month: string): string {
   if (!isDisplayMonth(month)) return ''
   const [monthNumber, year] = month.split('/')
   return `${year}${monthNumber}`
+}
+
+export function groupFilmsByStatus(films: FilmEntry[]): Record<FilmStatus, FilmEntry[]> {
+  const grouped: Record<FilmStatus, FilmEntry[]> = { watched: [], planned: [], missed: [] }
+  for (const film of films) grouped[film.status].push(film)
+  grouped.watched.sort((first, second) =>
+    dateSortKey(second.watchedOn).localeCompare(dateSortKey(first.watchedOn)),
+  )
+  return grouped
+}
+
+export type MonthGroup = { month: string; films: FilmEntry[] }
+
+export function groupFilmsByMonth(films: FilmEntry[], view: FilmStatus): MonthGroup[] {
+  const groups = new Map<string, FilmEntry[]>()
+  for (const film of films) {
+    const month = view === 'watched' ? film.watchedOn.slice(3) : film.plannedMonth || ''
+    const group = groups.get(month)
+    if (group) group.push(film)
+    else groups.set(month, [film])
+  }
+
+  return Array.from(groups, ([month, groupedFilms]) => ({ month, films: groupedFilms }))
+    .sort((first, second) => monthSortKey(second.month).localeCompare(monthSortKey(first.month)))
 }

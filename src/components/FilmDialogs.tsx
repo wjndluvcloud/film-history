@@ -141,8 +141,6 @@ export function WatchedEntryDialog({ film, currentDate, onSubmit, onClose }: Wat
         <div className="full-field"><FilmDateField initialValue={film.watchedOn || currentDate} kind="day" /></div>
         <RatingField fullWidth initialRating={isEditing ? film.rating : 3} />
         <label className="form-field full-field">Link poster<input defaultValue={film.poster} name="poster" placeholder="https://..." type="url" /></label>
-        <label className="form-field full-field">Link poster<input defaultValue={film.poster} name="poster" placeholder="https://..." type="url" /></label>
-        <label className="form-field full-field">Link poster<input defaultValue={film.poster} name="poster" placeholder="https://..." type="url" /></label>
         <label className="form-field full-field">Ghi chú<textarea defaultValue={film.note} name="note" placeholder="Bạn cảm thấy thế nào về bộ phim?" rows={4} /></label>
         <div className="modal-actions">
           <button className="cancel-button" onClick={onClose} type="button">Hủy</button>

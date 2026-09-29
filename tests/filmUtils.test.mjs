@@ -8,16 +8,16 @@ const javascript = ts.transpileModule(source, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 },
 }).outputText
 const {
-  FILMS_STORAGE_KEY,
   dateSortKey,
   formatDate,
   formatLocalDate,
   formatLocalMonth,
   formatMonth,
+  groupFilmsByMonth,
+  groupFilmsByStatus,
   loadFilms,
   monthSortKey,
   parseDisplayDate,
-  saveFilms,
 } = await import(`data:text/javascript;base64,${Buffer.from(javascript).toString('base64')}`)
 
 const film = {
@@ -46,6 +46,8 @@ test('saved films load only when the stored collection is valid', () => {
   assert.deepEqual(loadFilms(storage), [film])
 
   for (const value of ['not JSON', '{}', JSON.stringify([{ ...film, status: 'unknown' }]),
+    JSON.stringify([{ ...film, id: 0 }]),
+    JSON.stringify([{ ...film, title: '  ' }]),
     JSON.stringify([{ ...film, watchedOn: '31/04/2026' }]),
     JSON.stringify([{ ...film, plannedMonth: '13/2026' }]),
     JSON.stringify([{ ...film, plannedMonth: '2026-13' }])]) {
@@ -67,19 +69,8 @@ test('legacy ISO dates migrate to the display format when films load', () => {
   ])
 })
 
-test('storage failures leave the app usable', () => {
-  const films = [film]
+test('storage failures return no legacy films', () => {
   assert.deepEqual(loadFilms({ getItem: () => { throw new Error('blocked') } }), [])
-  assert.equal(saveFilms(films, { setItem: () => { throw new Error('full') } }), false)
-
-  let savedKey = ''
-  let savedValue = ''
-  assert.equal(saveFilms(films, { setItem: (key, value) => {
-    savedKey = key
-    savedValue = value
-  } }), true)
-  assert.equal(savedKey, FILMS_STORAGE_KEY)
-  assert.deepEqual(JSON.parse(savedValue), films)
 })
 
 test('dates use the local calendar and reject impossible days', () => {
@@ -93,5 +84,25 @@ test('dates use the local calendar and reject impossible days', () => {
   assert.equal(formatMonth('2026-13'), 'Chưa xếp tháng')
   assert.ok(dateSortKey('02/01/2027') > dateSortKey('31/12/2026'))
   assert.ok(monthSortKey('01/2027') > monthSortKey('12/2026'))
+})
+
+test('film collections are grouped and sorted without changing the source', () => {
+  const films = [
+    { ...film, id: 1, watchedOn: '31/12/2026' },
+    { ...film, id: 2, watchedOn: '02/01/2027' },
+    { ...film, id: 3, status: 'planned', watchedOn: '', plannedMonth: '12/2026' },
+    { ...film, id: 4, status: 'planned', watchedOn: '', plannedMonth: '' },
+    { ...film, id: 5, status: 'missed', watchedOn: '', plannedMonth: '01/2027' },
+  ]
+
+  const grouped = groupFilmsByStatus(films)
+  assert.deepEqual(grouped.watched.map(({ id }) => id), [2, 1])
+  assert.deepEqual(grouped.planned.map(({ id }) => id), [3, 4])
+  assert.deepEqual(grouped.missed.map(({ id }) => id), [5])
+  assert.deepEqual(films.map(({ id }) => id), [1, 2, 3, 4, 5])
+
+  assert.deepEqual(groupFilmsByMonth(grouped.watched, 'watched').map(({ month }) => month), ['01/2027', '12/2026'])
+  assert.deepEqual(groupFilmsByMonth(grouped.planned, 'planned').map(({ month }) => month), ['12/2026', ''])
+  assert.deepEqual(groupFilmsByMonth(grouped.missed, 'missed').map(({ month }) => month), ['01/2027'])
 })
 

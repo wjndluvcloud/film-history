@@ -20,18 +20,17 @@ import {
   formatDate,
   formatLocalDate,
   formatLocalMonth,
-  dateSortKey,
   FILMS_STORAGE_KEY,
+  groupFilmsByStatus,
   loadFilms,
   parseDisplayDate,
   type FilmEntry,
   type FilmStatus,
+  type FilmView,
 } from './filmUtils'
 import './App.css'
 
-type View = 'overview' | FilmStatus
-
-const navigation: { id: View; label: string; icon: typeof LayoutDashboard }[] = [
+const navigation: { id: FilmView; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'watched', label: 'Đã xem', icon: Clapperboard },
   { id: 'planned', label: 'Muốn xem', icon: Bookmark },
@@ -60,7 +59,7 @@ function App() {
   const [loginError, setLoginError] = useState('')
   const [error, setError] = useState('')
   const [legacyFilms, setLegacyFilms] = useState<FilmEntry[]>(loadFilms)
-  const [activeView, setActiveView] = useState<View>('overview')
+  const [activeView, setActiveView] = useState<FilmView>('overview')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [newFilmStatus, setNewFilmStatus] = useState<FilmStatus>('watched')
   const [filmToUpdateWatched, setFilmToUpdateWatched] = useState<FilmEntry | null>(null)
@@ -146,12 +145,7 @@ function App() {
   const today = new Date()
   const currentDate = formatLocalDate(today)
   const currentMonth = formatLocalMonth(today)
-  const todayLabel = currentDate
-  const watched = films
-    .filter((film) => film.status === 'watched')
-    .sort((first, second) => dateSortKey(second.watchedOn).localeCompare(dateSortKey(first.watchedOn)))
-  const planned = films.filter((film) => film.status === 'planned')
-  const missed = films.filter((film) => film.status === 'missed')
+  const { watched, planned, missed } = groupFilmsByStatus(films)
   const watchedThisMonth = watched.filter((film) => film.watchedOn.endsWith(currentMonth))
   const ratedFilms = watched.filter((film) => film.rating > 0)
   const averageRating = ratedFilms.length
@@ -338,7 +332,7 @@ function App() {
             )}
             <section className="welcome-row">
               <div>
-                <p className="eyebrow">{todayLabel}</p>
+                <p className="eyebrow">{currentDate}</p>
                 <h1>{activeView === 'overview' ? 'Một tháng đầy thước phim.' : navigation.find((item) => item.id === activeView)?.label}</h1>
                 <p className="welcome-copy">Chào bạn, đây là câu chuyện điện ảnh của mình.</p>
               </div>
@@ -392,8 +386,7 @@ function App() {
                 canEdit={isOwner && !isSaving}
                 onShowWatched={() => setActiveView('watched')}
                 onAddFilm={() => openAddFilm()}
-                onMarkWatched={setFilmToUpdateWatched}
-                onEditWatched={setFilmToUpdateWatched}
+                onUpdateWatched={setFilmToUpdateWatched}
                 onMarkMissed={markFilmMissed}
                 onReturnToWatchlist={returnFilmToWatchlist}
               />
@@ -404,7 +397,7 @@ function App() {
                   canEdit={isOwner && !isSaving}
                   currentMonth={currentMonth}
                   watchedThisMonthCount={watchedThisMonth.length}
-                  onMarkWatched={setFilmToUpdateWatched}
+                  onUpdateWatched={setFilmToUpdateWatched}
                   onMarkMissed={markFilmMissed}
                   onAddFilm={() => { setActiveView('planned'); openAddFilm('planned') }}
                 />
