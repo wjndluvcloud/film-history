@@ -244,7 +244,7 @@ function App() {
       rating: status === 'watched' ? Number(formData.get('rating')) || 0 : 0,
       status,
       note: String(formData.get('note')).trim(),
-      poster: poster || 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
+      poster,
     }
     const saved = await commitFilms((currentFilms) => {
       const nextId = currentFilms.reduce((highest, film) => Math.max(highest, film.id), 0) + 1

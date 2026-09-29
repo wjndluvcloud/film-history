@@ -24,8 +24,11 @@ function FilmRow({ film, index, canEdit, onUpdateWatched, onMarkMissed, onReturn
   return (
     <article className="film-row">
       <div className={`film-poster poster-${index % 4}`}>
-        <img alt={`Poster phim ${film.title}`} loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} src={film.poster} />
-        <span>{film.title.slice(0, 1)}</span>
+        {film.poster ? (
+          <img alt={`Poster phim ${film.title}`} loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} src={film.poster} />
+        ) : (
+          <span>{film.title.slice(0, 1)}</span>
+        )}
       </div>
       <div className="film-info">
         <div className="film-title-line"><h3>{film.title}</h3><span className="film-year">{film.year}</span></div>
