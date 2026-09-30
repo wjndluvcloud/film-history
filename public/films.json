@@ -1,5 +1,17 @@
 [
   {
+    "id": 7,
+    "title": "Ngọn đồi hoa hồng anh",
+    "director": "Miyazaki Goro",
+    "year": 2011,
+    "watchedOn": "",
+    "plannedMonth": "10/2026",
+    "rating": 0,
+    "status": "planned",
+    "note": "",
+    "poster": ""
+  },
+  {
     "id": 6,
     "title": "Street Fighter",
     "director": "Kitao Sakurai",
