@@ -1,5 +1,17 @@
 [
   {
+    "id": 5,
+    "title": "Digger",
+    "director": "Alejandro González Iñárritu",
+    "year": 2026,
+    "watchedOn": "",
+    "plannedMonth": "10/2026",
+    "rating": 0,
+    "status": "planned",
+    "note": "",
+    "poster": ""
+  },
+  {
     "id": 4,
     "title": "Lên Hương",
     "director": "Khương Ngọc & Tấn Hoàng Thông",
