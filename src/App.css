@@ -87,7 +87,7 @@
 .feature-meta i { width: 3px; height: 3px; border-radius: 50%; background: #647067; }
 .feature-rating { margin-top: 19px; }
 .stars { display: inline-flex; align-items: center; gap: 5px; color: #c78a37; font-size: 11px; font-weight: 600; }
-.feature-note { max-width: 410px; margin: 13px 0 16px; color: #c5cec4; font-family: 'Noto Serif', Georgia, serif; font-size: 15px; font-style: italic; line-height: 1.45; }
+.feature-note { max-width: 410px; margin: 13px 0 16px; color: #c5cec4; font-family: 'Noto Serif', Georgia, serif; font-size: 15px; font-style: italic; line-height: 1.45; white-space: pre-wrap; }
 .text-link, .subtle-link { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; color: var(--accent); background: transparent; cursor: pointer; font-size: 11px; font-weight: 600; }
 .stats-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 15px 0 36px; }
 .stat-card { min-height: 115px; padding: 15px 17px 13px; border: 1px solid var(--line); background: var(--surface); }
@@ -129,7 +129,7 @@
 .film-date { display: inline-flex; align-items: center; gap: 5px; color: var(--muted-soft); font-size: 9px; }
 .film-bottom .stars { font-size: 10px; }
 .film-bottom .stars svg { width: 12px; height: 12px; }
-.film-note { display: -webkit-box; overflow: hidden; margin: 8px 0 0; color: var(--muted); font-family: 'Noto Serif', Georgia, serif; font-size: 11px; font-style: italic; line-height: 1.35; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.film-note { margin: 8px 0 0; color: var(--muted); font-family: 'Noto Serif', Georgia, serif; font-size: 11px; font-style: italic; line-height: 1.35; white-space: pre-wrap; }
 .watchlist-panel { padding: 18px 17px 15px; border: 1px solid var(--line); background: var(--surface); }
 .watchlist-heading { align-items: center; margin-bottom: 12px; }
 .watchlist-heading h2 { font-size: 19px; }
