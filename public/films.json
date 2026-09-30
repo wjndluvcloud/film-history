@@ -1,5 +1,17 @@
 [
   {
+    "id": 6,
+    "title": "Street Fighter",
+    "director": "Kitao Sakurai",
+    "year": 2026,
+    "watchedOn": "",
+    "plannedMonth": "10/2026",
+    "rating": 0,
+    "status": "planned",
+    "note": "",
+    "poster": ""
+  },
+  {
     "id": 5,
     "title": "Digger",
     "director": "Alejandro González Iñárritu",
