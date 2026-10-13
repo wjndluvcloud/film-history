@@ -1,0 +1,22 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "scenes-api",
+  "main": "index.mjs",
+  "compatibility_date": "2026-10-13",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "vars": {
+    "WEB_ORIGIN": "https://films.nducvu.men/",
+    "GITHUB_OWNER": "wjndluvcloud",
+    "GITHUB_REPO": "film-history",
+    "GITHUB_BRANCH": "main",
+    "GITHUB_FILE_PATH": "public/films.json"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "AUTH_STATE", "class_name": "AuthState" }]
+  },
+  "exports": {
+    "AuthState": { "type": "durable-object", "storage": "sqlite" }
+  },
+  "observability": { "enabled": true }
+}

@@ -1,29 +1,39 @@
-import { createServer } from 'node:http'
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
-import { pathToFileURL } from 'node:url'
+import { Buffer } from 'node:buffer'
+export { AuthState } from './auth.mjs'
 
 const required = ['WEB_ORIGIN', 'GITHUB_OWNER', 'GITHUB_REPO', 'GITHUB_TOKEN', 'ADMIN_PASSWORD']
-const missing = required.filter((name) => !process.env[name])
-if (missing.length) throw new Error(`Missing environment variables: ${missing.join(', ')}`)
-if (process.env.ADMIN_PASSWORD.length < 16) throw new Error('ADMIN_PASSWORD must have at least 16 characters')
 
-const webOrigin = new URL(process.env.WEB_ORIGIN).origin
-const owner = process.env.GITHUB_OWNER
-const repo = process.env.GITHUB_REPO
-const branch = process.env.GITHUB_BRANCH || 'main'
-const filePath = process.env.GITHUB_FILE_PATH || 'public/films.json'
-const port = Number(process.env.PORT || 3001)
-const sessions = new Map()
-const loginAttempts = new Map()
-const sessionDuration = 12 * 60 * 60 * 1000
-const githubUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${filePath.split('/').map(encodeURIComponent).join('/')}`
+function configuration(env) {
+  const missing = required.filter((name) => typeof env[name] !== 'string' || !env[name])
+  if (!env.AUTH_STATE) missing.push('AUTH_STATE')
+  if (missing.length) throw Object.assign(new Error(`Missing bindings: ${missing.join(', ')}`), { status: 500 })
+  if (env.ADMIN_PASSWORD.length < 16) {
+    throw Object.assign(new Error('ADMIN_PASSWORD must have at least 16 characters'), { status: 500 })
+  }
+  let webOrigin
+  try {
+    const url = new URL(env.WEB_ORIGIN)
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported protocol')
+    webOrigin = url.origin
+  } catch {
+    throw Object.assign(new Error('WEB_ORIGIN must be an HTTP or HTTPS URL'), { status: 500 })
+  }
+  return {
+    webOrigin,
+    branch: env.GITHUB_BRANCH || 'main',
+    githubUrl: `https://api.github.com/repos/${encodeURIComponent(env.GITHUB_OWNER)}/${encodeURIComponent(env.GITHUB_REPO)}/contents/${(env.GITHUB_FILE_PATH || 'public/films.json').split('/').map(encodeURIComponent).join('/')}`,
+  }
+}
 
-function json(response, status, body) {
-  response.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
+function json(status, body, headers = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      ...headers,
+    },
   })
-  response.end(JSON.stringify(body))
 }
 
 function validDate(value) {
@@ -53,7 +63,7 @@ function validFilm(film) {
 async function readBody(request) {
   const chunks = []
   let length = 0
-  for await (const chunk of request) {
+  for await (const chunk of request.body || []) {
     length += chunk.length
     if (length > 1_000_000) throw Object.assign(new Error('Request too large'), { status: 413 })
     chunks.push(chunk)
@@ -65,12 +75,12 @@ async function readBody(request) {
   }
 }
 
-async function githubRequest(method, body) {
-  return fetch(method === 'GET' ? `${githubUrl}?ref=${encodeURIComponent(branch)}` : githubUrl, {
+async function githubRequest(env, config, method, body) {
+  return fetch(method === 'GET' ? `${config.githubUrl}?ref=${encodeURIComponent(config.branch)}` : config.githubUrl, {
     method,
     headers: {
       Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
       'Content-Type': 'application/json',
       'User-Agent': 'scenes-film-journal',
       'X-GitHub-Api-Version': '2022-11-28',
@@ -80,8 +90,8 @@ async function githubRequest(method, body) {
   })
 }
 
-async function readFilms() {
-  const response = await githubRequest('GET')
+async function readFilms(env, config) {
+  const response = await githubRequest(env, config, 'GET')
   if (!response.ok) throw new Error(`GitHub read failed: ${response.status}`)
   const file = await response.json()
   if (file.type !== 'file' || file.encoding !== 'base64' || typeof file.content !== 'string') {
@@ -92,97 +102,86 @@ async function readFilms() {
   return { films, sha: file.sha }
 }
 
-function ownerSession(request) {
-  const token = /^Bearer (.+)$/.exec(request.headers.authorization || '')?.[1]
-  const expiresAt = token && sessions.get(token)
-  if (!expiresAt) return null
-  if (expiresAt <= Date.now()) {
-    sessions.delete(token)
-    return null
-  }
-  return token
+function getToken(request) {
+  return /^Bearer ([A-Za-z0-9_-]{43})$/.exec(request.headers.get('Authorization') || '')?.[1] || null
 }
 
-function passwordMatches(value) {
-  if (typeof value !== 'string') return false
-  const actual = createHash('sha256').update(value).digest()
-  const expected = createHash('sha256').update(process.env.ADMIN_PASSWORD).digest()
-  return timingSafeEqual(actual, expected)
+async function authRequest(env, path, body) {
+  const stub = env.AUTH_STATE.get(env.AUTH_STATE.idFromName('owner-auth'))
+  return stub.fetch(`https://auth.internal${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
 }
 
-const server = createServer(async (request, response) => {
-  const origin = request.headers.origin
-  if (origin && origin !== webOrigin) return json(response, 403, { error: 'Origin not allowed' })
-  if (origin === webOrigin) {
-    response.setHeader('Access-Control-Allow-Origin', webOrigin)
-    response.setHeader('Vary', 'Origin')
-    response.setHeader('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS')
-    response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  }
-  if (request.method === 'OPTIONS') return response.writeHead(204).end()
-
-  const path = new URL(request.url, 'http://localhost').pathname
-  try {
-    if (request.method === 'GET' && path === '/api/films') return json(response, 200, await readFilms())
-    if (request.method === 'GET' && path === '/api/session') return json(response, 200, { isOwner: Boolean(ownerSession(request)) })
-    if (request.method === 'POST' && path === '/api/login') {
-      const forwardedHeader = request.headers['x-forwarded-for']
-      const forwarded = request.socket.remoteAddress === '127.0.0.1' && typeof forwardedHeader === 'string'
-        ? forwardedHeader.split(',')[0].trim()
-        : null
-      const address = forwarded || request.socket.remoteAddress || 'unknown'
-      const attempt = loginAttempts.get(address) || { count: 0, until: 0 }
-      if (attempt.until > Date.now()) return json(response, 429, { error: 'Thử đăng nhập lại sau 15 phút.' })
-      const body = await readBody(request)
-      if (!body || typeof body !== 'object' || !passwordMatches(body.password)) {
-        attempt.count += 1
-        if (attempt.count >= 5) { attempt.count = 0; attempt.until = Date.now() + 15 * 60 * 1000 }
-        loginAttempts.set(address, attempt)
-        return json(response, 401, { error: 'Mật khẩu không đúng.' })
+export default {
+  async fetch(request, env) {
+    let headers = {}
+    try {
+      const config = configuration(env)
+      const origin = request.headers.get('Origin')
+      if (origin && origin !== config.webOrigin) return json(403, { error: 'Origin not allowed' })
+      if (origin === config.webOrigin) {
+        headers = {
+          'Access-Control-Allow-Origin': config.webOrigin,
+          Vary: 'Origin',
+          'Access-Control-Allow-Methods': 'GET, PUT, POST, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        }
       }
-      loginAttempts.delete(address)
-      const token = randomBytes(32).toString('base64url')
-      sessions.set(token, Date.now() + sessionDuration)
-      return json(response, 200, { token })
-    }
-    if (request.method === 'DELETE' && path === '/api/session') {
-      const token = ownerSession(request)
-      if (token) sessions.delete(token)
-      return json(response, 200, { ok: true })
-    }
-    if (request.method === 'PUT' && path === '/api/films') {
-      if (!ownerSession(request)) return json(response, 401, { error: 'Bạn cần đăng nhập để sửa phim.' })
-      const body = await readBody(request)
-      if (!body || !Array.isArray(body.films) || body.films.length > 2000
-        || !body.films.every(validFilm)
-        || new Set(body.films.map((film) => film.id)).size !== body.films.length
-        || (body.sha !== null && typeof body.sha !== 'string')) {
-        return json(response, 400, { error: 'Dữ liệu phim không hợp lệ.' })
+      if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers })
+
+      const path = new URL(request.url).pathname
+      if (request.method === 'GET' && path === '/api/films') {
+        return json(200, await readFilms(env, config), headers)
       }
-      const current = await readFilms()
-      if (current.sha !== body.sha) return json(response, 409, { error: 'Dữ liệu đã thay đổi. Hãy tải lại trang.' })
-      const result = await githubRequest('PUT', {
-        message: 'Update film journal',
-        branch,
-        content: Buffer.from(`${JSON.stringify(body.films, null, 2)}\n`).toString('base64'),
-        ...(current.sha ? { sha: current.sha } : {}),
-      })
-      if (result.status === 409 || result.status === 422) return json(response, 409, { error: 'Dữ liệu đã thay đổi. Hãy tải lại trang.' })
-      if (!result.ok) throw new Error(`GitHub write failed: ${result.status}`)
-      const saved = await result.json()
-      return json(response, 200, { films: body.films, sha: saved.content.sha })
+      if (request.method === 'POST' && path === '/api/login') {
+        const body = await readBody(request)
+        const result = await authRequest(env, '/login', {
+          password: body?.password,
+          address: request.headers.get('CF-Connecting-IP') || 'local',
+        })
+        return json(result.status, await result.json(), headers)
+      }
+      if (request.method === 'GET' && path === '/api/session') {
+        const result = await authRequest(env, '/verify', { token: getToken(request) })
+        return json(result.status, await result.json(), headers)
+      }
+      if (request.method === 'DELETE' && path === '/api/session') {
+        const result = await authRequest(env, '/logout', { token: getToken(request) })
+        return json(result.status, await result.json(), headers)
+      }
+      if (request.method === 'PUT' && path === '/api/films') {
+        const session = await authRequest(env, '/verify', { token: getToken(request) })
+        if (!(await session.json()).isOwner) return json(401, { error: 'Bạn cần đăng nhập để sửa phim.' }, headers)
+        const body = await readBody(request)
+        if (!body || !Array.isArray(body.films) || body.films.length > 2000
+          || !body.films.every(validFilm)
+          || new Set(body.films.map((film) => film.id)).size !== body.films.length
+          || (body.sha !== null && typeof body.sha !== 'string')) {
+          return json(400, { error: 'Dữ liệu phim không hợp lệ.' }, headers)
+        }
+        const current = await readFilms(env, config)
+        if (current.sha !== body.sha) return json(409, { error: 'Dữ liệu đã thay đổi. Hãy tải lại trang.' }, headers)
+        const result = await githubRequest(env, config, 'PUT', {
+          message: 'Update film journal',
+          branch: config.branch,
+          content: Buffer.from(`${JSON.stringify(body.films, null, 2)}\n`).toString('base64'),
+          ...(current.sha ? { sha: current.sha } : {}),
+        })
+        if (result.status === 409 || result.status === 422) return json(409, { error: 'Dữ liệu đã thay đổi. Hãy tải lại trang.' }, headers)
+        if (!result.ok) throw new Error(`GitHub write failed: ${result.status}`)
+        const saved = await result.json()
+        return json(200, { films: body.films, sha: saved.content.sha }, headers)
+      }
+      return json(404, { error: 'Không tìm thấy API.' }, headers)
+    } catch (error) {
+      if (error?.status === 400) return json(400, { error: 'JSON không hợp lệ.' }, headers)
+      if (error?.status === 413) return json(413, { error: 'Dữ liệu quá lớn.' }, headers)
+      console.error(error)
+      if (error?.status === 500) return json(500, { error: 'API chưa được cấu hình đúng.' }, headers)
+      return json(502, { error: 'Không thể kết nối dữ liệu. Hãy thử lại.' }, headers)
     }
-    return json(response, 404, { error: 'Không tìm thấy API.' })
-  } catch (error) {
-    if (error?.status === 400) return json(response, 400, { error: 'JSON không hợp lệ.' })
-    if (error?.status === 413) return json(response, 413, { error: 'Dữ liệu quá lớn.' })
-    console.error(error)
-    return json(response, 502, { error: 'Không thể kết nối dữ liệu. Hãy thử lại.' })
-  }
-})
-
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  server.listen(port, '127.0.0.1', () => console.log(`API listening on http://127.0.0.1:${port}`))
+  },
 }
-
-export { server }
