@@ -1,5 +1,17 @@
 [
   {
+    "id": 15,
+    "title": "The Cat in the Hat",
+    "director": "Alessandro Carloni & Erica Rivinoja",
+    "year": 2006,
+    "watchedOn": "",
+    "plannedMonth": "11/2026",
+    "rating": 0,
+    "status": "planned",
+    "note": "",
+    "poster": "https://outrightgames.com/wp-content/uploads/2026/04/CITH_HOR_ENG_KEY-ART-1-scaled.webp"
+  },
+  {
     "id": 14,
     "title": "Godzilla Minus Zero",
     "director": "Takashi Yamazaki",
