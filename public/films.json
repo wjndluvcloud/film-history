@@ -1,5 +1,17 @@
 [
   {
+    "id": 21,
+    "title": "Trại buôn người",
+    "director": "Toni Dương Bảo Anh",
+    "year": 2026,
+    "watchedOn": "29/10/2026",
+    "plannedMonth": "",
+    "rating": 3.5,
+    "status": "watched",
+    "note": "Một bộ phim tốt thì không cần Tết để có doanh thu cao. Đương nhiên còn có các yếu tố thiên thời địa lợi nhân hòa nhưng mà điều quan trọng thì đây là một bộ phim tốt.",
+    "poster": "https://iv1cdn.vnecdn.net/giaitri/images/web/2026/10/02/canh-phim-trai-buon-nguoi-lay-nuoc-mat-khan-gia-1790924197.jpg?w=1020&h=0&q=100&dpr=2&fit=crop&s=P5gyumZh2zGTb8KrZaGsZA"
+  },
+  {
     "id": 20,
     "title": "Chị Chị Em Em 3",
     "director": "Nguyễn Hữu Hoàng",
