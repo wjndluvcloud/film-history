@@ -1,5 +1,17 @@
 [
   {
+    "id": 22,
+    "title": "Clayface",
+    "director": "James Watkins",
+    "year": 2026,
+    "watchedOn": "07/11/2026",
+    "plannedMonth": "",
+    "rating": 2.5,
+    "status": "watched",
+    "note": "Xem xong trôi tuột không đọng lại gì, chắc do kịch bản tệ",
+    "poster": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-eGoc0ApJE_ZRrOrQ3EKdvoM-NWP9QwdqZHOllZMN6Q&s=10"
+  },
+  {
     "id": 21,
     "title": "Trại buôn người",
     "director": "Toni Dương Bảo Anh",
