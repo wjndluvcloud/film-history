@@ -1,5 +1,17 @@
 [
   {
+    "id": 23,
+    "title": "Ramayana",
+    "director": "Nitesh Tiwari",
+    "year": 2026,
+    "watchedOn": "24/11/2026",
+    "plannedMonth": "",
+    "rating": 3,
+    "status": "watched",
+    "note": "Được cái coi đã con mắt thôi chứ còn lại bt, lần đâu nghe nhạc Hans Zimmer làm mà không có nhiều cảm xúc ~~",
+    "poster": "https://i1-giaitri.vnecdn.net/2026/11/09/ramayana-1794217285-6524-1794218147.jpg?w=1020&h=0&q=100&dpr=2&fit=crop&s=YjO9ZSv8NPGIbFTSDMI-Og"
+  },
+  {
     "id": 22,
     "title": "Clayface",
     "director": "James Watkins",
