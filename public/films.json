@@ -1,5 +1,17 @@
 [
   {
+    "id": 28,
+    "title": "Dune 3",
+    "director": "Denis Villeneuve",
+    "year": 2026,
+    "watchedOn": "",
+    "plannedMonth": "12/2026",
+    "rating": 0,
+    "status": "planned",
+    "note": "",
+    "poster": ""
+  },
+  {
     "id": 27,
     "title": "Avengers: Doomsday",
     "director": "Joe Russo & Anthony Russo",
